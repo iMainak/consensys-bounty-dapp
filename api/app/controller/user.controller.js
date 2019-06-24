@@ -15,7 +15,6 @@ exports.authenticate = (req, res) => {
 
             user = {
                 id: data._id,
-                ID: data.ID,
                 token: token,
                 role: data.role,
                 account_address: data.account_address
@@ -50,7 +49,7 @@ exports.create = (req, res) => {
         }
         else {
             const UserModel = new userModel({
-                ID: user.ID,
+                id: user.id,
                 role: user.role,
                 email: user.email,
                 password: bcrypt.hashSync(user.password, 10),

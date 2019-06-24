@@ -73,7 +73,7 @@ contract Bounty {
 
     event SuccessfullySendBalance(
         address publisher_address,
-        uint8 amount,
+        string amount,
         address applier_address
     );
 //Some Modifier
@@ -148,20 +148,6 @@ contract Bounty {
         emit BountyAdded(_bounty_id, msg.sender, _bounty_details_hash);
     }
     /**
-    * [addBountyToApplier: Add Register Bounty to Applier]
-    */
-    function addBountyToApplier(
-        bytes32 _bounty_id,
-        address _new_applier,
-        AllowedStatus _allowed_status
-        )
-        public onlyPublisher isApplier(_new_applier) onlyPublisherOfBounty(_bounty_id){
-        require(bountys[_bounty_id].applier_address == address(0), "Applier already set.");
-        bountys[_bounty_id].applier_address = _new_applier;
-        bountys[_bounty_id].status = _allowed_status;
-        emit BountyAddedToApplier(_bounty_id, _new_applier);
-    }
-    /**
     * [addAnswerForBounty: Answer the coresponding bounty]
     */
     function addAnswerForBounty(
@@ -184,12 +170,31 @@ contract Bounty {
         return answer_id;
     }
     /**
+    * [addBountyToApplier: Add Register Bounty to Applier]
+    */
+    function addBountyToApplier(
+        bytes32 _bounty_id,
+        address _new_applier,
+        AllowedStatus _allowed_status
+        )
+        public onlyPublisher isApplier(_new_applier) onlyPublisherOfBounty(_bounty_id){
+        require(bountys[_bounty_id].applier_address == address(0), "Applier already set.");
+        bountys[_bounty_id].applier_address = _new_applier;
+        bountys[_bounty_id].status = _allowed_status;
+        emit BountyAddedToApplier(_bounty_id, _new_applier);
+    }
+    /**
     [getPublisherDetails: Get publisher details based on publisher address]
     */
-    function giveBalanceApplier(bytes32 _bounty_id, uint8 _amount, address _applier_address) public onlyPublisher isApplier(_applier_address) {
+    function giveAmountToApplier(
+        bytes32 _bounty_id,
+        string memory _amount,
+        address _applier_address
+        ) public onlyPublisher isApplier(_applier_address) {
         require(bountys[_bounty_id].applier_address != _applier_address, "Are you sure to send money to different account");
         emit SuccessfullySendBalance(msg.sender, _amount, _applier_address);
     }
+
 // Get Function
     /**
     [getPublisherDetails: Get publisher details based on publisher address]
@@ -223,20 +228,26 @@ contract Bounty {
             address,
             string memory,
             address,
+            AllowedStatus,
             uint[] memory) {
         Bountys memory bounty = bountys[_bounty_id];
-        return (bounty.publisher_address, bounty.bounty_details_hash, bounty.applier_address, bounty.answer);
+        return (
+        bounty.publisher_address,
+        bounty.bounty_details_hash,
+        bounty.applier_address,
+        bounty.status,
+        bounty.answer);
     }
     /**
     [getBountyAnswerDetails: Get all answer proposed by applier]
     */
-    function getBountyAnswerDetails(uint _answer_id) public view returns(uint, address, string memory) {
+    function getBountyAnswerDetails(uint _answer_id) public view returns(uint, address, string memory, AllowedStatus) {
         BountyAnswer memory returnBountyAnswer = bountyAnswer[_answer_id];
         return(
         returnBountyAnswer.answer_id,
         returnBountyAnswer.applier_address,
-        returnBountyAnswer.applier_solution_hash
-        // returnBountyAnswer.status
+        returnBountyAnswer.applier_solution_hash,
+        returnBountyAnswer.status
         );
     }
 }

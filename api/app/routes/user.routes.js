@@ -1,6 +1,6 @@
 module.exports = (app) => {
-    const users = require("../controller/user.controller.js")
-    app.post('users/authenticate', users.authenticate);
-    app.post('users/register', users.create);
-    app.post('users/isLogin', users.isLogin);
+    const user = require("../controller/user.controller.js")
+    app.post('user/authenticate', user.authenticate);
+    app.post('user/register', user.create);
+    app.post('user/isLogin', user.isLogin);
 }

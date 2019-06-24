@@ -42,8 +42,8 @@ app.use(expressJwt({
     }
 }).unless({
     path: [
-        '/users/authenticate',
-        '/users/register'
+        '/user/authenticate',
+        '/user/register'
     ]
 }))
 
