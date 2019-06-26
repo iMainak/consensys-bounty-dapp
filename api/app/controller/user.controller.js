@@ -12,9 +12,8 @@ exports.authenticate = (req, res) => {
             var token = jwt.sign({ id: id }, config.secret, {
                 expiresIn: 10800
             });
-
             user = {
-                id: data._id,
+                id: data.id,
                 token: token,
                 role: data.role,
                 account_address: data.account_address
@@ -34,41 +33,36 @@ exports.authenticate = (req, res) => {
     })
 }
 
-exports.create = (req, res) => {
-    var user = req.body;
-    if (!user.email || !user.password) {
-        return res.status(200).send({
-            message: "Email and Password can not be empty"
-        });
-    }
-    userModel.findOne({ email: user.email }).then(result => {
-        if (result) {
-            return res.status(200).send({
-                message: "Email already registered"
-            });
+exports.create = (user) => {
+    return new Promise((resolve, reject) => {
+        if(!user.email || !user.password) {
+            reject("Email and Password can not be empty");
         }
-        else {
-            const UserModel = new userModel({
-                id: user.id,
-                role: user.role,
-                email: user.email,
-                password: bcrypt.hashSync(user.password, 10),
-                privateKey: user.privateKey,
-                accountAddress: user.accountAddress
-            });
-
-            // Save User in the database
-            return UserModel.save().then(data => {
-                res.send(data);
-            }).catch(err => {
-                res.status(500).send({
-                    message: err.message || "Some error occurred while creating the User."
+        userModel.findOne({email: user.email}).then(result=>{
+            if(result)
+            {
+                reject("Email already registered");
+            }
+            else{
+                const UserModel = new userModel({
+                    id: user.id,
+                    role: user.role,
+                    email: user.email,
+                    password: bcrypt.hashSync(user.password, 10),
+                    private_key: user.privateKey,
+                    account_address: user.account_address      
                 });
-            });
-
-        }
+                // Save User in the database
+                UserModel.save().then(data => {
+                    console.log("saved data in mongo");
+                    resolve(data);
+                }).catch(err => {
+                    reject(err.message || "Some error occurred while creating the User.");
+                });
+    
+            }
+        }); 
     });
-
 };
 
 exports.isLogin = (req, res) => {
@@ -76,3 +70,7 @@ exports.isLogin = (req, res) => {
     console.log(req.privateKey);
     res.status(200).send(true);
 };
+
+
+
+                

@@ -1,4 +1,4 @@
-var config = require('config.json')
+var config = require('../../config.json')
 var ethers = require('ethers');
 var contractArtifacts = require('../../../dapp/build/contracts/Bounty.json')
 var userModel = require('../models/user.model.js')
@@ -9,7 +9,10 @@ const {
 const fs = require('fs');
 const mkdirp = require('mkdirp');
 
-contractAddress = contractArtifacts.networks['' + config.blockchainNetworkId]['address'];
+// contractAddress = contractArtifacts.networks['' + config.blockchainNetworkId]["address"];
+// contractAddress = "0x454CA8276D1932f0923275DBAc028eF1128e6B69"
+contractAddress = "0xeDDe308846ABb1331366956FdC7cEF3A2F5f85C0"
+
 contractABI = contractArtifacts.abi;
 
 provider = new ethers.providers.JsonRpcProvider(config.blockchainDeploymentpath, {
@@ -48,17 +51,19 @@ const sendBalance = (address) => {
 }
 
 const checkBalanceUpdate = (address) => {
-    return new Promise((res, rej) => {
+    return new Promise(async (res, rej) => {
         balance = await getBalance(address)
-        if (parseInt(bal) == 0) {
+        if (parseInt(balance) == 0) {
             setTimeout(() => {
-                checkBalanceUpdated(address).then(((result) => {
+                checkBalanceUpdate(address).then(((result) => {
                     res(result);
-                }));
+                })).catch(err => {
+                    console.error(err)
+                });
             }, 1000);
         } else {
-            console.log("balance is now: ", bal, "stopping");
-            resolve(true);
+            console.log("balance is now: ", balance, "stopping");
+            res(true);
         }
     })
 }
@@ -73,17 +78,23 @@ exports.registerPublisher = (req, res) => {
     account_details = {}
     account_details.id = req.body.id
     account_details.role = "Publisher"
-    account_details.email = req.body.id
-    account_details.password = req.body.id
+    account_details.email = req.body.email
+    account_details.password = req.body.password
     ipfsService.add(publisher_details).then(hash => {
+        console.log("Publisher Details Hash: ", hash[0].hash)
         new_account = createNewAccount();
         newWallet = new ethers.Wallet(new_account.privateKey, provider);
+        console.log("privateKey:", new_account.privateKey);
+        console.log("address:", new_account.address);
         sendBalance(new_account.address).then(data => {
-            getBalance(new_account.address).then(data => {
-                checkBalanceUpdate(new_account.address).then(data => {
-                    account_details.privateKey = new_account.privateKey
-                    account_details.account_address = new_account.address
-                    target_path = './uploads/publisher' + req.body.id
+            checkBalanceUpdate(new_account.address).then(data => {
+                getBalance(new_account.address).then(bal => {
+                    console.log(`created new account ${newWallet.address} : ${newWallet.privateKey} with balance ${ethers.utils.formatEther(bal)} ethers`);
+
+                    account_details.privateKey = newWallet.privateKey
+                    account_details.account_address = newWallet.address
+
+                    target_path = './uploads/publisher/' + req.body.id
                     mkdirp(target_path, (err) => {
                         if (err) console.error(err)
                         else {
@@ -147,11 +158,14 @@ exports.registerApplier = (req, res) => {
         new_account = createNewAccount()
         newWallet = new ethers.Wallet(new_account.privateKey, provider);
         sendBalance(new_account.address).then(data => {
-            getBalance(new_account.address).then(data => {
-                checkBalanceUpdate(new_account.address).then(data => {
-                    account_details.privateKey = new_account.privateKey
-                    account_details.account_address = new_account.address
-                    target_path = './uploads/applier' + req.body.id
+            checkBalanceUpdate(new_account.address).then(data => {
+                getBalance(new_account.address).then(bal => {
+                    console.log(`created new account ${newWallet.address} : ${newWallet.privateKey} with balance ${ethers.utils.formatEther(bal)} ethers`);
+
+                    account_details.privateKey = newWallet.address
+                    account_details.account_address = newWallet.privateKey
+
+                    target_path = './uploads/applier/' + req.body.id
                     mkdirp(target_path, (err) => {
                         if (err) console.error(err)
                         else {
@@ -340,41 +354,66 @@ exports.addBountyToApplier = (req, res) => {
         res.send(data)
     })
 }
-const sendEthers = (publisher_address, publisher_privateKey, amount, applier_address) => {
-    return new Promise((res, rej) => {
-        getBalance(publisher_address).then(data => {
-            provider_wallet = new ethers.Wallet(publisher_privateKey, provider);
-            provider_wallet.sendTransaction({
-                to: address,
-                value: ethers.utils.parseEther(amount)
-            }).then(data => {
-                checkBalanceUpdate(applier_address).then(data => {
-                    res(data)
-                })
-            }).catch(err => {
-                console.error(err)
-            })
-        }).catch(err => {
-            console.error(err)
-        })
+
+exports.getBalance = (req, res) => {
+    accountAddress = req.body.accountAddress
+    wallet = new ethers.Wallet(req.privateKey, provider);
+    contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    contract.getBalance(accountAddress).then(data => {
+        res.send(data)
+    }).catch(err => {
+        console.error(err)
     })
 }
 
-exports.giveAmountToApplier = (req, res) => {
-    bounty_id = req.body.bounty_id
-    publisher_address = req.body.publisher_address
-    publisher_privateKey = req.body.publisher_privateKey
+exports.deposit = (req, res) => {
+    senderAddress = req.body.senderAddress
+    receiverAddress = req.body.receiverAddress
     amount = req.body.amount
-    applier_address = req.body.applier_address
-    sendEthers(publisher_address, publisher_privateKey, amount, applier_address).then(data => {
-        bounty_ID = ethers.utils.formatBytes32String(bounty_id)
-        wallet = new ethers.Wallet(req.privateKey, provider);
-        contract = new ethers.Contract(contractAddress, contractABI, wallet);
-        contract.giveAmountToApplier(bounty_ID, amount, applier_address).then(data => {
-            res.send(data)
-        })
+    wallet = new ethers.Wallet(req.privateKey, provider);
+    contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    contract.deposit(senderAddress, receiverAddress, amount).then(data => {
+        res.send(data)
+    }).catch(err => {
+        console.error(err)
     })
 }
+// const sendEthers = (publisher_address, publisher_privateKey, amount, applier_address) => {
+//     return new Promise((res, rej) => {
+//         getBalance(publisher_address).then(data => {
+//             provider_wallet = new ethers.Wallet(publisher_privateKey, provider);
+//             provider_wallet.sendTransaction({
+//                 to: address,
+//                 value: ethers.utils.parseEther(amount)
+//             }).then(data => {
+//                 checkBalanceUpdate(applier_address).then(data => {
+//                     res(data)
+//                 })
+//             }).catch(err => {
+//                 console.error(err)
+//             })
+//         }).catch(err => {
+//             console.error(err)
+//         })
+//     })
+// }
+
+// exports.giveAmountToApplier = (req, res) => {
+//     bounty_id = req.body.bounty_id
+//     publisher_address = req.body.publisher_address
+//     publisher_privateKey = req.body.publisher_privateKey
+//     amount = req.body.amount
+//     applier_address = req.body.applier_address
+//     sendEthers(publisher_address, publisher_privateKey, amount, applier_address).then(data => {
+//         bounty_ID = ethers.utils.formatBytes32String(bounty_id)
+//         wallet = new ethers.Wallet(req.privateKey, provider);
+//         contract = new ethers.Contract(contractAddress, contractABI, wallet);
+//         contract.giveAmountToApplier(bounty_ID, amount, applier_address).then(data => {
+//             res.send(data)
+//         })
+//     })
+// }
+
 // GET Function
 exports.getPublisherDetails = (req, res) => {
     publisher_address = req.body.publisher_address
@@ -411,5 +450,7 @@ exports.getBountysDetails = (req, res) => {
 
 exports.getBountyAnswerDetails = (req, res) => {
     answer_id = req.body.answer_id
-    adminContract.getBountyAnswerDetails(answer_id)
+    adminContract.getBountyAnswerDetails(answer_id).then(data => {
+        res.send(data)
+    })
 }
