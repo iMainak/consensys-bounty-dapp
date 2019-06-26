@@ -17,7 +17,7 @@ contract Bounty {
         Rejected,
         Done
     }
-
+    // AllowedStatus allowedStatus;
     struct Bountys {
         bytes32 bounty_id;
         address publisher_address;
@@ -33,7 +33,6 @@ contract Bounty {
         string applier_solution_hash;
         AllowedStatus status;
     }
-    
     mapping(bytes32 => Bountys) public bountys;
 
     mapping (uint => BountyAnswer) public bountyAnswer;
@@ -43,6 +42,8 @@ contract Bounty {
     mapping(address => string) appliers;
 
     mapping(address => bytes32[]) public publisher_bountys;
+
+    mapping (address => uint) private balances;
 // Events
     event PublisherRegistered(
         address indexed publisher_address,
@@ -76,6 +77,12 @@ contract Bounty {
         string amount,
         address applier_address
     );
+    event LogDepositMade(
+        address publisherAddress,
+        address applierAddress,
+        uint amount
+    );
+
 //Some Modifier
     modifier onlyPublisher () {
         require(bytes(publishers[msg.sender]).length != 0, "Publisher not Registered");
@@ -106,6 +113,7 @@ contract Bounty {
         require(bountys[_bounty_id].publisher_address == msg.sender, "User is not the Publisher of the Bounty");
         _;
     }
+
 //Function
     /**
     * [registerPublisher: registers any caller as a new Publisher]
@@ -131,9 +139,8 @@ contract Bounty {
     */
     function addBounty(
         bytes32 _bounty_id,
-        string memory _bounty_details_hash,
-        AllowedStatus _allowed_status
-     )
+        string memory _bounty_details_hash
+        )
       public onlyPublisher returns (bytes32 ){
         require(bountys[_bounty_id].publisher_address == address(0), "Bounty Already Registered");
         Bountys memory newBounty;
@@ -141,7 +148,7 @@ contract Bounty {
         newBounty.bounty_id = _bounty_id;
         newBounty.publisher_address = msg.sender;
         newBounty.bounty_details_hash = _bounty_details_hash;
-        newBounty.status = _allowed_status;
+        newBounty.status = AllowedStatus.Pending;
 
         bountys[_bounty_id] = newBounty;
         publisher_bountys[msg.sender].push(_bounty_id);
@@ -152,8 +159,7 @@ contract Bounty {
     */
     function addAnswerForBounty(
         bytes32 _bounty_id,
-        string memory _applier_solution_hash,
-        AllowedStatus _allowed_status
+        string memory _applier_solution_hash
     ) public onlyApplier isBounty(_bounty_id) returns(uint){
         answer_id++;
         require(bountys[_bounty_id].applier_address == address(0), "Bounty already done");
@@ -161,38 +167,61 @@ contract Bounty {
         newBountyAnswer.answer_id = answer_id;
         newBountyAnswer.applier_address = msg.sender;
         newBountyAnswer.applier_solution_hash = _applier_solution_hash;
-        newBountyAnswer.status = _allowed_status;
+        newBountyAnswer.status = AllowedStatus.Pending;
 
         bountyAnswer[answer_id] = newBountyAnswer;
         bountys[_bounty_id].answer.push(answer_id);
         emit BountyAnswerAdded(_bounty_id, msg.sender, _applier_solution_hash);
-
-        return answer_id;
     }
     /**
     * [addBountyToApplier: Add Register Bounty to Applier]
     */
     function addBountyToApplier(
         bytes32 _bounty_id,
-        address _new_applier,
-        AllowedStatus _allowed_status
+        address _new_applier
         )
         public onlyPublisher isApplier(_new_applier) onlyPublisherOfBounty(_bounty_id){
         require(bountys[_bounty_id].applier_address == address(0), "Applier already set.");
         bountys[_bounty_id].applier_address = _new_applier;
-        bountys[_bounty_id].status = _allowed_status;
+        bountys[_bounty_id].status = AllowedStatus.Done;
         emit BountyAddedToApplier(_bounty_id, _new_applier);
     }
     /**
-    [getPublisherDetails: Get publisher details based on publisher address]
+    [deposit: give some amount to recevuer from sender]
     */
-    function giveAmountToApplier(
-        bytes32 _bounty_id,
-        string memory _amount,
-        address _applier_address
-        ) public onlyPublisher isApplier(_applier_address) {
-        require(bountys[_bounty_id].applier_address != _applier_address, "Are you sure to send money to different account");
-        emit SuccessfullySendBalance(msg.sender, _amount, _applier_address);
+     function deposit(address sender, address receiver, uint amount) public payable returns (uint, uint) {
+          balances[sender] -= amount;
+          balances[receiver] += amount;
+          emit LogDepositMade(sender, receiver, amount);
+          return (balances[receiver], balances[sender]);
+    }
+    /**
+    [getBalance:  get Balance for msg.sender]
+    */
+    function getBalance(address sender) public view returns (uint) {
+         return balances[sender];
+    }
+    /**
+    [acceptBountyAnswer: status update for bounty_id]
+    */
+    function acceptBountyAnswer(bytes32 _bounty_id, address _applier_address, uint _answer_id)
+    public onlyPublisher isBounty(_bounty_id) returns(bytes32){
+        require(bountys[_bounty_id].applier_address == _applier_address, "Applier Adress Not Matched");
+        BountyAnswer memory newBountyAnswer = bountyAnswer[_answer_id];
+        newBountyAnswer.status = AllowedStatus.Accepted;
+        bountyAnswer[_answer_id] = newBountyAnswer;
+        return _bounty_id;
+    }
+    /**
+    [rejectBountyAnswer: status update for bounty_id]
+    */
+    function rejectBountyAnswer(bytes32 _bounty_id, address _applier_address, uint _answer_id)
+    public onlyPublisher isBounty(_bounty_id) returns(bytes32){
+        require(bountys[_bounty_id].applier_address == _applier_address, "Applier Adress Not Matched");
+        BountyAnswer memory newBountyAnswer = bountyAnswer[_answer_id];
+        newBountyAnswer.status = AllowedStatus.Rejected;
+        bountyAnswer[_answer_id] = newBountyAnswer;
+        return _bounty_id;
     }
 
 // Get Function
