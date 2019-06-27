@@ -26,8 +26,10 @@ app.use(expressJwt({
         if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
             req.privateKey = 'value of private key fill it from token';
             token = req.headers.authorization.split(' ')[1];
+            console.log(token)            
         } else if (req.query && req.query.token) {
             token = req.query.token;
+            // console.log(token)
         }
 
         jwt.verify(token, config.secret, function (err, decoded) {
@@ -42,7 +44,7 @@ app.use(expressJwt({
     }
 }).unless({
     path: ['/users/authenticate',
-        '/users/register',
+        // '/users/register',
         '/bounty/registerPublisher',
         '/bounty/registerApplier',
         // '/bounty/addBounty',

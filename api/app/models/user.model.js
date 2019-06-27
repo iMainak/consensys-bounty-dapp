@@ -5,8 +5,8 @@ const UserSchema = mongoose.Schema({
     role: String,
     email: String,
     password: String,
-    private_key: String,
-    account_address: String
+    privateKey: String,
+    accountAddress: String
 }, {
     timestamps: true
 })

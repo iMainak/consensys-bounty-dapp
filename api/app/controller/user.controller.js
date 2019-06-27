@@ -1,12 +1,12 @@
 const userModel = require('../models/user.model.js');
 var jwt = require('jsonwebtoken');
 var bcrypt = require('bcryptjs');
-var config = require('config.json');
+var config = require('../../config.json');
 
 exports.authenticate = (req, res) => {
     var user = req.body;
     userModel.findOne({ email: user.email }).then(data => {
-        if (data && comparesync(user.password, data.password)) {
+        if (data && bcrypt.compareSync(user.password, data.password)) {
             var id = Math.random(1000) + "$" + data.privateKey + "$" + Math.random(10000000) + "$" + data.role;
 
             var token = jwt.sign({ id: id }, config.secret, {
@@ -16,7 +16,7 @@ exports.authenticate = (req, res) => {
                 id: data.id,
                 token: token,
                 role: data.role,
-                account_address: data.account_address
+                accountAddress: data.accountAddress
             };
 
             res.send(user)
@@ -49,8 +49,8 @@ exports.create = (user) => {
                     role: user.role,
                     email: user.email,
                     password: bcrypt.hashSync(user.password, 10),
-                    private_key: user.privateKey,
-                    account_address: user.account_address      
+                    privateKey: user.privateKey,
+                    accountAddress: user.accountAddress      
                 });
                 // Save User in the database
                 UserModel.save().then(data => {
@@ -64,13 +64,6 @@ exports.create = (user) => {
         }); 
     });
 };
-
-exports.isLogin = (req, res) => {
-    console.log(req);
-    console.log(req.privateKey);
-    res.status(200).send(true);
-};
-
 
 
                 

@@ -92,7 +92,7 @@ exports.registerPublisher = (req, res) => {
                     console.log(`created new account ${newWallet.address} : ${newWallet.privateKey} with balance ${ethers.utils.formatEther(bal)} ethers`);
 
                     account_details.privateKey = newWallet.privateKey
-                    account_details.account_address = newWallet.address
+                    account_details.accountAddress = newWallet.address
 
                     target_path = './uploads/publisher/' + req.body.id
                     mkdirp(target_path, (err) => {
@@ -162,8 +162,8 @@ exports.registerApplier = (req, res) => {
                 getBalance(new_account.address).then(bal => {
                     console.log(`created new account ${newWallet.address} : ${newWallet.privateKey} with balance ${ethers.utils.formatEther(bal)} ethers`);
 
-                    account_details.privateKey = newWallet.address
-                    account_details.account_address = newWallet.privateKey
+                    account_details.privateKey = newWallet.privateKey
+                    account_details.accountAddress = newWallet.address
 
                     target_path = './uploads/applier/' + req.body.id
                     mkdirp(target_path, (err) => {
@@ -216,10 +216,10 @@ exports.registerApplier = (req, res) => {
 exports.addBounty = (req, res) => {
     bounty_details = {}
 
-    bounty_id = req.body.id
+    bounty_id = req.body.bounty_id
 
     publisher_id = req.body.publisher_id
-    target_path = './uploads/publisher' + publisher_id
+    target_path = './uploads/publisher/' + publisher_id
     if (!fs.existsSync(target_path)) {
         console.log('Publisher Not registered')
         res.status(400).send({
@@ -233,7 +233,8 @@ exports.addBounty = (req, res) => {
 
             else {
                 description = req.files.description
-                description_path = target_path1
+                taskName = 'task.pdf'
+                description_path = target_path1 + '/' + taskName
                 fs.writeFileSync(description_path, description.data, 'binary')
                 bounty_details.description = description_path
                 bounty_details.submissionDate = req.body.submissionDate
@@ -243,7 +244,7 @@ exports.addBounty = (req, res) => {
                     bounty_ID = ethers.utils.formatBytes32String(bounty_id)
                     wallet = new ethers.Wallet(req.privateKey, provider);
                     contract = new ethers.Contract(contractAddress, contractABI, wallet);
-                    contract.addBounty(bounty_ID, hash[0].hash, 0).then(data => {
+                    contract.addBounty(bounty_ID, hash[0].hash).then(data => {
 
                         fs.readFile(target_path + '/file.json', 'utf8', function readFileCallback(err, data1) {
                             if (err) {
@@ -413,7 +414,15 @@ exports.deposit = (req, res) => {
 //         })
 //     })
 // }
-
+function hex2string(hexx) {
+    var hex = hexx.toString();
+    var str = '';
+    for (var i = 0;
+        (i < hex.length && hex.substr(i, 2) !== '00'); i += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    return (str);
+}
 // GET Function
 exports.getPublisherDetails = (req, res) => {
     publisher_address = req.body.publisher_address

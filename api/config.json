@@ -6,7 +6,7 @@
     "blockchainDeploymentpath": "http://localhost:8545",
     "blockchainNetworkId": 12201,
     "adminPrivateKey": "9BB155D16AE57D0A55D277486EED6934ABBFBF9427B3083F0FE88F75D2E40959",
-    "account_address": "0xDaEB5F5CC00940678e45C16FF5f4134Ade6689cE",
+    "accountAddress": "0xDaEB5F5CC00940678e45C16FF5f4134Ade6689cE",
     "ipfs_host": "127.0.0.1",
     "ipfs_port": 5001
 }
